@@ -8,10 +8,10 @@
 
 import Foundation
 
-//protocol CoinManagerDelegate {
-//    func didUpdateCurrency(_ coinManager: CoinManager, coin: CoinModel)
-//    func didFailWithError(error: error)
-//}
+protocol CoinManagerDelegate {
+    func didUpdatePrice(price: String, currency: String)
+    func didFailWithError(error: Error)
+}
 
 struct CoinManager {
     
@@ -23,7 +23,7 @@ struct CoinManager {
     let currencyArray = ["AUD", "BRL","CAD","CNY","EUR","GBP","HKD","IDR","ILS","INR","JPY","MXN","NOK","NZD","PLN","RON","RUB","SEK","SGD","USD","ZAR"]
     
     // Delegate
-//    var delegate: CoinManagerDelegate?
+    var delegate: CoinManagerDelegate?
     
     
     func getCoinPrice(for currency: String) {
@@ -37,14 +37,18 @@ struct CoinManager {
             //3. Give the session a task for the URLSession
             let task = session.dataTask(with: url) { (data, response, error) in
                 if error != nil {
+                    self.delegate?.didFailWithError(error: error!)
                     return
                 }
-                //                //Format the data we got back as a string to be able to print it.
-                //                let dataAsString = String(data: data!, encoding: .utf8)
-                //                print(dataAsString)
                 
                 if let safeData = data {
-                    let bitcoinPrice = self.parseJSON(safeData)
+                    
+                    if let bitcoinPrice = self.parseJSON(safeData) {
+                        
+                        let priceString = String(format: "%.2f", bitcoinPrice)
+                        
+                        self.delegate?.didUpdatePrice(price: priceString, currency: currency )
+                    }
                 }
                 
             }
@@ -56,11 +60,14 @@ struct CoinManager {
         let decoder = JSONDecoder()
         do {
             let decodedData = try decoder.decode(CoinData.self, from: data)
-            let lastPrice = decodedData.rate
-            print(lastPrice)
-            return lastPrice
+            
+            let currencyName = decodedData.asset_id_quote
+            let bitcoinPrice = decodedData.rate
+            print(bitcoinPrice)
+            print(currencyName)
+            return bitcoinPrice
         } catch {
-            //            delegate?.didFailWithError(self, error: error)
+            delegate?.didFailWithError(error: error)
             print(error)
             return nil
         }
